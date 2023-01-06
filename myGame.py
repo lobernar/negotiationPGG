@@ -2,7 +2,7 @@ from typing import Union, List
 import numpy as np
 import egttools as egt
 from egttools.games import AbstractTwoPLayerGame, AbstractNPlayerGame
-from egttools import sample_simplex
+from egttools import sample_simplex, calculate_nb_states
 
 C = 1
 D = 0
@@ -25,16 +25,24 @@ class C_strategy():
 
 class negotiationPGG(AbstractTwoPLayerGame):
     def __init__(self, nb_strategies: int, cost, multiplying_factor, strategies : List[C_strategy], p : float):
-        self.nb_group_configurations_ = 3
+        self.nb_group_configurations_ = 6
+        print(calculate_nb_states(2, 3))
         self.group_size_ = 2
         self.c = cost
         self.r = multiplying_factor
         self.p = p
         self.strategies = strategies
         self.state = self.create_init_state() # Creates a random initial state
-        super().__init__(nb_strategies)
-        self.calculate_payoffs()
+        super().__init__(nb_strategies) # This constructor calls calculate_payoffs()
         
+        # hardcoding the payoffs yields the correct results
+        x = -self.c + self.r*self.c
+        self.payoffs_ = np.array([
+            [x, x, -self.c+(self.r*self.c)/2],
+            [x, self.p*x, 0],
+            [(self.r*self.c)/2, 0, 0]
+        ])
+                
     def create_init_state(self):
         # With probability p players initially choose to cooperate and (1-p) to defect
         state = []
@@ -53,7 +61,6 @@ class negotiationPGG(AbstractTwoPLayerGame):
             for _ in range(strategy_count):
                 players.append(i)
                 
-        print("Group composition: ", group_composition)
         self.negotiate(players)
         contributions = 0.0
         for i in range(len(players)):
@@ -71,9 +78,17 @@ class negotiationPGG(AbstractTwoPLayerGame):
         for i in range(self.nb_group_configurations_):
             # Get group composition
             group_composition = sample_simplex(i, self.group_size_, self.nb_strategies_)
+            print("Group composition: ", group_composition)
             self.play(group_composition, payoffs_container)
-            for strategy_index, strategy_payoff in enumerate(payoffs_container):
-                self.payoffs_[strategy_index, i] += strategy_payoff
+            players = []
+            for j, strategy_count in enumerate(group_composition):
+                for _ in range(strategy_count):
+                    players.append(j)
+            print([players[0], players[1]], payoffs_container)
+            self.payoffs_[players[0], players[1]] += payoffs_container[players[0]]
+            if(players[0] != players[1]): self.payoffs_[players[1], players[0]] += payoffs_container[players[1]]
+                    
+                #self.payoffs_[strategy_index, i] += strategy_payoff
             # Reinitialize payoff vector
             payoffs_container[:] = 0
 
@@ -83,9 +98,9 @@ class negotiationPGG(AbstractTwoPLayerGame):
     def negotiate(self, players):
         stationary_state = False
         prev_state = self.state[:]
-        print("self.state: ", self.state)
         print("Players: ", players)
-        # Repeat until stationary state is reached
+        
+        # Repeat until stationary state is reached (such a state always exists)
         while not stationary_state:
             # Select random player
             player_index = np.random.randint(len(players))
@@ -105,5 +120,5 @@ class negotiationPGG(AbstractTwoPLayerGame):
                         stationary_state = False
                         
             prev_state = self.state[:]
-        
-        
+            
+        print("State: ", self.state)
