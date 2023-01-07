@@ -85,7 +85,6 @@ class negotiationPGG(AbstractTwoPLayerGame):
             self.payoffs_[players[0], players[1]] += payoffs_container[players[0]]
             if(players[0] != players[1]): self.payoffs_[players[1], players[0]] += payoffs_container[players[1]]
                     
-                #self.payoffs_[strategy_index, i] += strategy_payoff
             # Reinitialize payoff vector
             payoffs_container[:] = 0
 

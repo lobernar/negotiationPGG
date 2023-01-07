@@ -22,82 +22,6 @@ c = 1
 r = 1.5
 p = 0.5
 
-def fermi(beta, fitnessDiff): return 1/(1 + (np.exp(beta*fitnessDiff)))
-
-def moran_step(current_state, beta, mu, Z, A):
-    # Select 2 random players
-    invader = np.random.randint(3)
-    resident = np.random.randint(3)
-    while resident == invader:
-        resident = np.random.randint(3)
-        
-    # Calculate fitness
-    k = current_state[invader]
-    invaderFitness = (((k-1)*A[invader][invader])+((Z-k)*A[invader, resident]))/float(Z-1)
-    residentFitness = ((k*A[resident][invader])+((Z-k-1)*A[resident, resident]))/float(Z-1)
-    
-    # Calculate imitation probabilities
-    fitness_diff = invaderFitness-residentFitness
-    T_plus = (1-mu)*((Z-k)/Z)*(k/(Z-1))*fermi(-beta, fitness_diff) + mu*((Z-k)/Z)
-    T_minus = (1-mu)*(k/Z)*((Z-k)/(Z-1))*fermi(beta, fitness_diff) + mu*(k/Z)
-        
-    # Decide whether the player imitates
-    rand_prob = np.random.rand()
-    if rand_prob < mu:
-        # Mutation occurs
-        mutate_to = np.random.randint(3)
-        if current_state[invader] > 0: # Check that we don't remove from empty population
-            current_state[mutate_to] += 1
-            current_state[invader] -= 1
-    elif rand_prob < T_plus and current_state[resident] > 0:
-        # Increase invaders
-        current_state[invader] += 1
-        current_state[resident] -= 1
-    elif rand_prob < T_minus and current_state[invader] > 0: 
-        # Decrease invaders
-        current_state[resident] += 1
-        current_state[invader] -= 1
-    #print(current_state)
-    return current_state
-
-
-def estimate_stationary_distribution(nb_runs, transitory, nb_generations, beta, mu, Z, A):
-    final_population = np.zeros(Z+1)
-    c0_freq, c1_freq, c2_freq = 0.0, 0.0, 0.0
-    
-    # Run whole process for nb_runs
-    for _ in range(nb_runs):
-        # Initialize random population
-        x = np.random.randint(Z+1)
-        y = np.random.randint((Z+1)-x)
-        initial_state = [x, y, Z-x-y] 
-        current_state = initial_state
-        # Transitory period
-        for _ in range(transitory):
-            moran_step(current_state, beta, mu, Z, A)
-          
-        # Run for nb_generations  
-        generation_state = [0]*(Z+1)
-        for _ in range(nb_generations):
-            moran_step(current_state, beta, mu, Z, A)
-            # Compute how often each state is reached (and average it)
-            generation_state[current_state[1]] += 1/nb_generations
-            
-          
-        final_population += generation_state
-        c0_freq += current_state[0]/Z
-        c1_freq += current_state[1]/Z
-        c2_freq += current_state[2]/Z
-    # Average the results
-    final_population /= nb_runs
-    c0_freq /= nb_runs
-    c1_freq /= nb_runs
-    c2_freq /= nb_runs
-    print(c0_freq, c1_freq, c2_freq)
-    
-    return (c0_freq, c1_freq, c2_freq)
-
-
 if __name__ == '__main__':
     # Initialize payoff matrix
     game = negotiationPGG(len(strategies), c, r, strategies, p)
@@ -108,14 +32,10 @@ if __name__ == '__main__':
     c0_freqs, c1_freqs, c2_freqs = [], [], []
     analytical_evolver = egt.analytical.StochDynamics(len(strategies), payoffs, Z, 2, mu)
     for beta in betas:
-        tmp = estimate_stationary_distribution(nb_runs, transitory, nb_generations, beta, mu, Z, payoffs)
-        c0_freqs.append(tmp[0])
-        c1_freqs.append(tmp[1])
-        c2_freqs.append(tmp[2])
-        #print(analytical_evolver.calculate_stationary_distribution(beta))
-        
-        
-    
+        sd_analytical = analytical_evolver.calculate_stationary_distribution(beta)
+        c0_freqs.append(np.sum(sd_analytical[:-Z-1]))
+        c1_freqs.append(np.sum(sd_analytical[-Z-1:-1]))
+        c2_freqs.append(sd_analytical[-1])
     
     # Plotting
     sns.set_context("notebook", rc={"lines.linewidth": 3, "axes.linewidth": 3})
