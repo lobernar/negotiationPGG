@@ -26,7 +26,6 @@ class C_strategy():
 class negotiationPGG(AbstractTwoPLayerGame):
     def __init__(self, nb_strategies: int, cost, multiplying_factor, strategies : List[C_strategy], p : float):
         self.nb_group_configurations_ = 6
-        print(calculate_nb_states(2, 3))
         self.group_size_ = 2
         self.c = cost
         self.r = multiplying_factor
@@ -78,13 +77,11 @@ class negotiationPGG(AbstractTwoPLayerGame):
         for i in range(self.nb_group_configurations_):
             # Get group composition
             group_composition = sample_simplex(i, self.group_size_, self.nb_strategies_)
-            print("Group composition: ", group_composition)
             self.play(group_composition, payoffs_container)
             players = []
             for j, strategy_count in enumerate(group_composition):
                 for _ in range(strategy_count):
                     players.append(j)
-            print([players[0], players[1]], payoffs_container)
             self.payoffs_[players[0], players[1]] += payoffs_container[players[0]]
             if(players[0] != players[1]): self.payoffs_[players[1], players[0]] += payoffs_container[players[1]]
                     
@@ -98,7 +95,6 @@ class negotiationPGG(AbstractTwoPLayerGame):
     def negotiate(self, players):
         stationary_state = False
         prev_state = self.state[:]
-        print("Players: ", players)
         
         # Repeat until stationary state is reached (such a state always exists)
         while not stationary_state:
@@ -120,5 +116,3 @@ class negotiationPGG(AbstractTwoPLayerGame):
                         stationary_state = False
                         
             prev_state = self.state[:]
-            
-        print("State: ", self.state)
